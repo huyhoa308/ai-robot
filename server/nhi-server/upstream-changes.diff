@@ -1,0 +1,73 @@
+--- a/core/connection.py	2026-10-17 23:55:14.569035400 +0700
++++ b/core/connection.py	2026-10-18 00:42:51.246088800 +0700
+@@ -1437,6 +1437,11 @@
+                     },
+                     "type": "function",
+                     "index": idx,
++                    **(
++                        {"extra_content": tool_call_data["extra_content"]}
++                        if tool_call_data.get("extra_content")
++                        else {}
++                    ),
+                 }
+                 for idx, (_, tool_call_data) in enumerate(record_tools)
+             ]
+@@ -1480,6 +1485,11 @@
+                     },
+                     "type": "function",
+                     "index": idx,
++                    **(
++                        {"extra_content": tool_call_data["extra_content"]}
++                        if tool_call_data.get("extra_content")
++                        else {}
++                    ),
+                 }
+                 for idx, (_, tool_call_data) in enumerate(need_llm_tools)
+             ]
+@@ -1850,3 +1860,9 @@
+                 tool_calls_list[tool_index]["name"] = tool_call.function.name
+             if tool_call.function.arguments:
+                 tool_calls_list[tool_index]["arguments"] += tool_call.function.arguments
++            # Gemini (OpenAI-compatible API) attaches a thought_signature in
++            # extra_content; it must be echoed back with the tool call or the
++            # next request is rejected (400 "missing a thought_signature").
++            extra = getattr(tool_call, "model_extra", None) or {}
++            if extra.get("extra_content"):
++                tool_calls_list[tool_index]["extra_content"] = extra["extra_content"]
+--- a/core/providers/asr/openai.py	2026-10-17 23:58:02.484535400 +0700
++++ b/core/providers/asr/openai.py	2026-10-17 23:58:02.433993900 +0700
+@@ -15,7 +15,11 @@
+         self.interface_type = InterfaceType.NON_STREAM
+         self.api_key = config.get("api_key")
+         self.api_url = config.get("base_url")
+-        self.model = config.get("model_name")        
++        self.model = config.get("model_name")
++        # Optional: force the spoken language (ISO-639-1, e.g. "vi") and give a
++        # context prompt. Auto-detection often misses on short utterances.
++        self.language = config.get("language")
++        self.prompt = config.get("prompt")
+         self.output_dir = config.get("output_dir")
+         self.delete_audio_file = delete_audio_file
+ 
+@@ -40,6 +44,10 @@
+             data = {
+                 "model": self.model
+             }
++            if self.language:
++                data["language"] = self.language
++            if self.prompt:
++                data["prompt"] = self.prompt
+ 
+ 
+             with open(file_path, "rb") as audio_file:  # 使用with语句确保文件关闭
+--- a/core/providers/tools/server_plugins/plugin_executor.py	2026-10-17 23:55:14.593770500 +0700
++++ b/core/providers/tools/server_plugins/plugin_executor.py	2026-10-18 00:49:55.824270900 +0700
+@@ -96,7 +96,7 @@
+         tools = {}
+ 
+         # 获取必要的函数
+-        necessary_functions = ["handle_exit_intent", "get_lunar"]
++        necessary_functions = ["handle_exit_intent"]  # nhi-server: get_lunar (Chinese lunar calendar) removed
+ 
+         # 获取配置中的函数
+         config_functions = self.config["Intent"][

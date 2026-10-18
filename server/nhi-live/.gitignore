@@ -1,0 +1,11 @@
+# KHÔNG đưa API key và file sinh ra lên git / gói zip
+config.yaml
+.venv/
+.venv-*/
+python/
+_test/
+*.log
+*.pid
+probe_*.wav
+__pycache__/
+dist/

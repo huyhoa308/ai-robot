@@ -1,0 +1,17 @@
+# API keys - KHÔNG BAO GIỜ đưa lên git
+config.yaml
+.config.yaml
+!config.template.yaml
+!.config.template.yaml
+# môi trường, file sinh ra
+.venv/
+.venv-*/
+python/
+__pycache__/
+*.log
+*.pid
+dist/
+logs/
+.pio/
+build/
+probe_*.wav

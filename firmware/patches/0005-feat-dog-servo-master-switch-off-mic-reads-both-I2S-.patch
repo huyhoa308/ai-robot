@@ -1,0 +1,143 @@
+From 2657f60c88cb3af5d527934da7f8138cce2e54db Mon Sep 17 00:00:00 2001
+From: Truong Huy Hoa <huyhoa308@gmail.com>
+Date: Sun, 18 Oct 2026 01:30:02 +0700
+Subject: [PATCH 5/5] feat(dog): servo master switch (off), mic reads both I2S
+ slots
+
+- DOG_SERVOS_ENABLED in dog_config.h (0 = no servo task, pins held LOW)
+- Mic RX in stereo; the codec picks whichever slot carries the INMP441 and
+  logs the level every 3 s, flagging "NO SIGNAL" when both slots are silent
+  (found the VDD/GND and SCK/WS wiring mistakes this way)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ main/boards/esp32s3-weact-dog/dog_config.h    |  3 +
+ .../esp32s3-weact-dog/weact_dog_board.cc      | 72 ++++++++++++++++++-
+ 2 files changed, 74 insertions(+), 1 deletion(-)
+
+diff --git a/main/boards/esp32s3-weact-dog/dog_config.h b/main/boards/esp32s3-weact-dog/dog_config.h
+index 02aead8..a3829d9 100644
+--- a/main/boards/esp32s3-weact-dog/dog_config.h
++++ b/main/boards/esp32s3-weact-dog/dog_config.h
+@@ -70,6 +70,9 @@
+ // ============================================================================
+ // Servo legs
+ // ============================================================================
++// Master switch: 0 = servos off (no PWM task, signal pins held LOW, legs limp).
++#define DOG_SERVOS_ENABLED       0
++
+ enum LegId : uint8_t { LEG_FL = 0, LEG_FR = 1, LEG_RL = 2, LEG_RR = 3, LEG_COUNT = 4 };
+ 
+ struct LegConfig {
+diff --git a/main/boards/esp32s3-weact-dog/weact_dog_board.cc b/main/boards/esp32s3-weact-dog/weact_dog_board.cc
+index e2e2d59..4358476 100644
+--- a/main/boards/esp32s3-weact-dog/weact_dog_board.cc
++++ b/main/boards/esp32s3-weact-dog/weact_dog_board.cc
+@@ -10,6 +10,10 @@
+ #include <esp_lcd_panel_vendor.h>
+ #include <esp_log.h>
+ #include <esp_system.h>
++#include <esp_timer.h>
++
++#include <mutex>
++#include <vector>
+ 
+ #include "application.h"
+ #include "button.h"
+@@ -80,11 +84,58 @@ public:
+             },
+         };
+         ESP_ERROR_CHECK(i2s_channel_init_std_mode(tx_handle_, &std_cfg));
+-        std_cfg.slot_cfg.slot_mask = I2S_STD_SLOT_LEFT;  // mic: INMP441 L/R -> GND
++        // Mic: read both slots and use whichever carries the INMP441 (L/R -> GND
++        // = left, L/R -> VDD or floating = right), so a wiring change cannot mute it.
++        std_cfg.slot_cfg.slot_mode = I2S_SLOT_MODE_STEREO;
++        std_cfg.slot_cfg.slot_mask = I2S_STD_SLOT_BOTH;
+         ESP_ERROR_CHECK(i2s_channel_init_std_mode(rx_handle_, &std_cfg));
+         ESP_LOGI(TAG, "Full-duplex I2S: BCLK %d, WS %d, DIN %d, DOUT %d @ %d Hz", PIN_I2S_BCLK,
+                  PIN_I2S_WS, PIN_I2S_DIN, PIN_I2S_DOUT, AUDIO_OUTPUT_SAMPLE_RATE);
+     }
++
++protected:
++    int Read(int16_t* dest, int samples) override {
++        std::lock_guard<std::mutex> lock(data_if_mutex_);
++        stereo_.resize((size_t)samples * 2);
++        size_t bytes_read = 0;
++        if (i2s_channel_read(rx_handle_, stereo_.data(), stereo_.size() * sizeof(int32_t),
++                             &bytes_read, 200) != ESP_OK) {
++            return 0;
++        }
++        int frames = (int)(bytes_read / (2 * sizeof(int32_t)));
++        int64_t sum[2] = {0, 0};
++        for (int i = 0; i < frames; ++i) {
++            for (int c = 0; c < 2; ++c) {
++                int32_t v = stereo_[i * 2 + c] >> 12;  // same gain as NoAudioCodec::Read
++                sum[c] += v < 0 ? -v : v;
++            }
++            int32_t v = stereo_[i * 2 + mic_slot_] >> 12;
++            dest[i] = (v > INT16_MAX) ? INT16_MAX : (v < -INT16_MAX) ? -INT16_MAX : (int16_t)v;
++        }
++        if (frames > 0) {
++            for (int c = 0; c < 2; ++c) level_[c] += ((float)sum[c] / frames - level_[c]) * 0.05f;
++            // Switch slot only when the other one is clearly louder.
++            int other = mic_slot_ ^ 1;
++            if (level_[other] > 4.0f * level_[mic_slot_] + 20.0f) {
++                mic_slot_ = other;
++                ESP_LOGW(TAG, "mic signal found on the %s slot, switching", other ? "RIGHT" : "LEFT");
++            }
++        }
++        int64_t now = esp_timer_get_time() / 1000;
++        if (now - last_log_ms_ > 3000) {
++            last_log_ms_ = now;
++            ESP_LOGI(TAG, "mic level L %d / R %d (using %s)%s", (int)level_[0], (int)level_[1],
++                     mic_slot_ ? "R" : "L",
++                     (level_[0] < 3.0f && level_[1] < 3.0f) ? "  <- NO SIGNAL: check mic SD/SCK/WS/VDD wiring" : "");
++        }
++        return frames;
++    }
++
++private:
++    std::vector<int32_t> stereo_;
++    float level_[2] = {0, 0};
++    int mic_slot_ = 0;
++    int64_t last_log_ms_ = 0;
+ };
+ 
+ class WeactDogBoard : public WifiBoard {
+@@ -130,6 +181,21 @@ private:
+         }
+     }
+ 
++#if !DOG_SERVOS_ENABLED
++    // Servo signal lines LOW: no pulses, servos stay limp and quiet.
++    static void ParkServoPins() {
++        gpio_config_t io = {};
++        io.pin_bit_mask = (1ULL << PIN_SERVO_FL) | (1ULL << PIN_SERVO_FR) |
++                          (1ULL << PIN_SERVO_RL) | (1ULL << PIN_SERVO_RR);
++        io.mode = GPIO_MODE_OUTPUT;
++        gpio_config(&io);
++        for (auto pin : {PIN_SERVO_FL, PIN_SERVO_FR, PIN_SERVO_RL, PIN_SERVO_RR}) {
++            gpio_set_level(pin, 0);
++        }
++        ESP_LOGI(TAG, "Servo legs disabled (DOG_SERVOS_ENABLED = 0)");
++    }
++#endif
++
+     void InitializeSpi() {
+         spi_bus_config_t buscfg = {};
+         buscfg.mosi_io_num = PIN_TFT_MOSI;
+@@ -191,7 +257,11 @@ public:
+ #ifdef CONFIG_DOG_EYES_DEBUG_CYCLE
+         display_->StartDebugCycle(2500);  // bench test: cycle moods
+ #endif
++#if DOG_SERVOS_ENABLED
+         legs_.Begin();  // task only; servos attach after Wi-Fi + audio are up
++#else
++        ParkServoPins();  // legs disabled: Play()/AttachSequential() are no-ops
++#endif
+         behavior_ = new DogBehavior(display_, &legs_);
+         behavior_->Start();
+         InitializeTof();
+-- 
+2.44.0.windows.1
+

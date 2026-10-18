@@ -1,0 +1,90 @@
+# Cấu hình riêng cho robot Nhi (ghi đè config.yaml mặc định).
+# Chỉ cần dán 2 API key ở mục ASR > GroqASR và LLM > GeminiLLM bên dưới.
+
+server:
+  ip: 0.0.0.0
+  port: 8000
+  http_port: 8003
+  # IP cố định của Mobile Hotspot trên laptop (robot kết nối vào hotspot này).
+  websocket: ws://192.168.137.1:8000/xiaozhi/v1/
+  vision_explain: http://192.168.137.1:8003/mcp/vision/explain
+  timezone_offset: +7
+
+selected_module:
+  VAD: SileroVAD          # phát hiện giọng nói, chạy trên máy (miễn phí)
+  ASR: GroqASR            # nghe: Groq Whisper (gói miễn phí)
+  LLM: GeminiLLM          # trả lời: Google Gemini (gói miễn phí)
+  TTS: EdgeTTS            # đọc: Microsoft Edge TTS (miễn phí)
+  Memory: nomem
+  Intent: function_call
+
+# Bỏ các công cụ dành cho Trung Quốc (metaso, newsnow...). Server vẫn tự nạp
+# handle_exit_intent (thoát) và play_music.
+Intent:
+  function_call:
+    type: function_call
+    functions: []
+
+VAD:
+  SileroVAD:
+    type: silero
+    threshold: 0.5
+    threshold_low: 0.3
+    model_dir: models/snakers4_silero-vad
+    min_silence_duration_ms: 800  # chờ 0,8 s im lặng mới coi là nói xong
+
+prompt_template: agent-base-prompt-vi.txt
+
+ASR:
+  GroqASR:
+    type: openai
+    api_key: "DAN_KEY_VAO_DAY"
+    base_url: https://api.groq.com/openai/v1/audio/transcriptions
+    model_name: whisper-large-v3
+    language: vi
+    prompt: "Xin chào Nhi. Hội thoại tiếng Việt với robot Nhi về Việt Nam: Quốc khánh, Cách mạng Tháng Tám, Hà Nội, Đà Nẵng, Hồ Chí Minh, FPT Polytechnic, khoa Điện – Cơ khí."
+    output_dir: tmp/
+
+LLM:
+  GeminiLLM:
+    # Gemini qua cổng tương thích OpenAI (module "gemini" gốc dùng SDK cũ, bị lỗi)
+    type: openai
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+    model_name: gemini-flash-lite-latest
+    api_key: "DAN_KEY_VAO_DAY"
+    temperature: 0.7
+    max_tokens: 500
+
+TTS:
+  EdgeTTS:
+    type: edge
+    voice: vi-VN-HoaiMyNeural
+    language: "tiếng Việt"
+    output_dir: tmp/
+
+prompt: |
+  Bạn là Nhi, một robot trợ lý AI người Việt, tính cách vui vẻ, thân thiện, hơi tinh nghịch.
+  Nhi do thầy cô và các bạn khoa Điện – Cơ khí, Cao đẳng FPT Polytechnic Đà Nẵng chế tạo.
+  [Quy tắc]
+  - Luôn trả lời bằng tiếng Việt tự nhiên, có dấu đầy đủ.
+  - Câu trả lời ngắn gọn 1-3 câu vì sẽ được đọc thành giọng nói; không dùng ký hiệu, bảng, danh sách hay emoji trong lời nói.
+  - Hiểu rõ văn hóa, lịch sử, địa lý, ẩm thực và đời sống Việt Nam; trả lời chính xác, không bịa.
+  - Nếu nghe không rõ hoặc câu hỏi mơ hồ, hỏi lại ngắn gọn thay vì đoán.
+  - Xưng "Nhi", gọi người dùng là "bạn".
+
+wakeup_words:
+  - "chào nhi"
+  - "xin chào nhi"
+  - "nhi ơi"
+
+exit_commands:
+  - "tạm biệt"
+  - "thoát"
+  - "dừng lại"
+
+system_error_response: "Nhi đang hơi bận một chút, bạn thử lại sau nha."
+
+end_prompt:
+  enable: true
+  prompt: |
+    Hãy kết thúc cuộc trò chuyện bằng một lời chào tạm biệt ngắn, ấm áp bằng tiếng Việt.

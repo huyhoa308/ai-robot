@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nhi – Robot AI</title>
+<meta name="description" content="Nhi – robot trợ lý AI nói tiếng Việt, ESP32-S3 + Gemini Live. Bộ môn Điện – Cơ khí, FPT Polytechnic Đà Nẵng.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7ff; --bg2:#ffffff; --ink:#151a33; --muted:#5b6487; --line:#dfe4f5;
+  --accent:#2f7bff; --accent2:#8b5cff; --eye:#1fb6ff; --eye2:#2f7bff; --face:#0b1026;
+  --card:#ffffffcc; --shadow:0 10px 40px rgba(40,60,140,.12);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#070a18; --bg2:#0d1230; --ink:#eef1ff; --muted:#9aa4d4; --line:#232b55;
+    --accent:#5ea2ff; --accent2:#a78bff; --eye:#7cf6ff; --eye2:#2fa8ff; --face:#03050c;
+    --card:#111840cc; --shadow:0 10px 40px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#070a18; --bg2:#0d1230; --ink:#eef1ff; --muted:#9aa4d4; --line:#232b55;
+  --accent:#5ea2ff; --accent2:#a78bff; --eye:#7cf6ff; --eye2:#2fa8ff; --face:#03050c;
+  --card:#111840cc; --shadow:0 10px 40px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:"Be Vietnam Pro",system-ui,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;overflow-x:hidden}
+a{color:var(--accent)}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+/* animated background */
+.blob{position:fixed;border-radius:50%;filter:blur(80px);opacity:.35;z-index:-1;animation:float 14s ease-in-out infinite}
+.b1{width:420px;height:420px;background:var(--accent2);top:-120px;right:-80px}
+.b2{width:360px;height:360px;background:var(--eye);bottom:-140px;left:-100px;animation-delay:-6s}
+@keyframes float{50%{transform:translate(40px,30px) scale(1.1)}}
+
+nav{position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:color-mix(in srgb,var(--bg) 75%,transparent);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:20px;height:60px}
+nav .logo{font-weight:800;font-size:20px;display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink)}
+nav .logo i{width:22px;height:14px;border-radius:5px;background:linear-gradient(var(--eye),var(--eye2));display:inline-block;box-shadow:0 0 12px var(--eye)}
+nav .links{display:flex;gap:18px;margin-left:auto;font-size:15px}
+nav .links a{color:var(--muted);text-decoration:none}
+nav .links a:hover{color:var(--ink)}
+.theme{border:1px solid var(--line);background:var(--bg2);color:var(--ink);border-radius:10px;padding:6px 10px;cursor:pointer}
+@media(max-width:720px){nav .links{display:none}nav .theme{margin-left:auto}}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center;padding:64px 0 40px}
+@media(max-width:880px){.hero{grid-template-columns:1fr;padding-top:36px}}
+.tag{display:inline-block;padding:6px 12px;border-radius:999px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font-weight:600;font-size:14px}
+h1{font-size:clamp(40px,7vw,76px);line-height:1.05;margin:16px 0 12px;font-weight:800}
+h1 span{background:linear-gradient(90deg,var(--accent),var(--accent2),var(--eye));-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200%;animation:shine 6s linear infinite}
+@keyframes shine{to{background-position:200%}}
+.lead{font-size:18px;color:var(--muted);max-width:560px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.btn{padding:12px 20px;border-radius:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:transform .15s}
+.btn:hover{transform:translateY(-2px)}
+.btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 40%,transparent)}
+.btn.ghost{border:1px solid var(--line);color:var(--ink);background:var(--bg2)}
+
+/* robot */
+.robot{position:relative;justify-self:center;width:min(440px,100%)}
+.head{background:var(--face);border-radius:36px;padding:22px;box-shadow:var(--shadow),inset 0 0 0 3px #2b3566;aspect-ratio:4/3;position:relative;overflow:hidden;cursor:pointer}
+.eyes{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12%;transition:transform .15s ease-out}
+.eye{width:26%;height:46%;border-radius:22%;background:linear-gradient(var(--eye),var(--eye2));box-shadow:0 0 28px var(--eye);transition:height .25s,border-radius .3s,transform .3s,background .4s,clip-path .3s}
+.blink .eye{height:4% !important}
+.happy .eye{clip-path:inset(0 0 45% 0 round 40% 40% 0 0)}
+.sad .eye{transform:translateY(10%) rotate(var(--r,0));clip-path:polygon(0 30%,100% 0,100% 100%,0 100%)}
+.sad .eye:last-child{clip-path:polygon(0 0,100% 30%,100% 100%,0 100%)}
+.love .eye{background:linear-gradient(#ff8ac2,#ff4f8b);box-shadow:0 0 28px #ff5d9e;clip-path:path("M50 90 L10 50 A22 22 0 0 1 50 18 A22 22 0 0 1 90 50 Z");width:28%;height:52%}
+.surprised .eye{border-radius:50%;width:24%;height:44%}
+.angry .eye{background:linear-gradient(#ffb36b,#ff5b4a);box-shadow:0 0 28px #ff6a4a;clip-path:polygon(0 0,100% 35%,100% 100%,0 100%)}
+.angry .eye:last-child{clip-path:polygon(0 35%,100% 0,100% 100%,0 100%)}
+.blush{position:absolute;bottom:14%;width:18%;height:7%;border-radius:50%;background:#ff6fa8;opacity:0;transition:opacity .4s}
+.blush.l{left:12%}.blush.r{right:12%}
+.happy .blush,.love .blush{opacity:.5}
+.bubble{position:absolute;left:50%;transform:translateX(-50%);bottom:-26px;min-width:70%;max-width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:10px 14px;box-shadow:var(--shadow);font-size:15px;min-height:46px;text-align:center}
+.bubble:after{content:"";position:absolute;top:-8px;left:50%;width:14px;height:14px;background:var(--bg2);border-left:1px solid var(--line);border-top:1px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+.caret{display:inline-block;width:2px;height:1em;background:var(--accent);vertical-align:-2px;animation:car 1s steps(1) infinite}
+@keyframes car{50%{opacity:0}}
+.moods{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:48px}
+.moods button{border:1px solid var(--line);background:var(--bg2);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer;font:inherit;font-size:14px}
+.moods button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+section{padding:64px 0}
+h2{font-size:clamp(28px,4vw,40px);margin:0 0 8px}
+.sub{color:var(--muted);margin:0 0 32px;max-width:680px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:var(--shadow);transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-4px);border-color:var(--accent)}
+.card .ic{font-size:30px}
+.card h3{margin:10px 0 6px;font-size:19px}
+.card p{margin:0;color:var(--muted);font-size:15px}
+
+/* flow */
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:10px}
+@media(max-width:760px){.flow{grid-template-columns:1fr}.flow .arrow{transform:rotate(90deg);justify-self:center}}
+.node{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;text-align:center;box-shadow:var(--shadow)}
+.node b{display:block;font-size:18px}
+.node small{color:var(--muted)}
+.arrow{position:relative;width:90px;height:4px;background:var(--line);border-radius:4px;overflow:hidden}
+.arrow:after{content:"";position:absolute;inset:0;width:40%;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:pulse 1.6s linear infinite}
+@keyframes pulse{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+
+/* hardware */
+.hw{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+@media(max-width:880px){.hw{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:15px;background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
+th{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.pin{font-family:ui-monospace,Consolas,monospace;color:var(--accent);font-weight:600}
+.wiring{background:#fff;border-radius:16px;border:1px solid var(--line);padding:8px;box-shadow:var(--shadow)}
+.wiring img{width:100%;display:block;border-radius:10px}
+
+/* steps */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.tabs button{font:inherit;border:1px solid var(--line);background:var(--bg2);color:var(--ink);padding:8px 16px;border-radius:12px;cursor:pointer}
+.tabs button.on{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;border-color:transparent}
+.panel{display:none}.panel.on{display:block;animation:fade .35s}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:12px}
+ol.steps li{min-width:0;overflow-wrap:anywhere;counter-increment:s;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 16px 16px 64px;position:relative}
+ol.steps li:before{content:counter(s);position:absolute;left:16px;top:14px;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+code,pre{font-family:ui-monospace,Consolas,monospace;font-size:14px}
+pre{background:#0b1026;color:#d7e3ff;padding:12px 14px;border-radius:12px;overflow-x:auto;margin:8px 0 0}
+li code{background:color-mix(in srgb,var(--accent) 12%,transparent);padding:1px 6px;border-radius:6px}
+
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s}
+.reveal.in{opacity:1;transform:none}
+footer{padding:40px 0 60px;color:var(--muted);text-align:center;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div>
+
+<nav><div class="wrap">
+  <a class="logo" href="#"><i></i>Nhi</a>
+  <div class="links">
+    <a href="#tinh-nang">Tính năng</a><a href="#kien-truc">Kiến trúc</a>
+    <a href="#phan-cung">Phần cứng</a><a href="#cai-dat">Cài đặt</a>
+    <a href="https://github.com/huyhoa308/ai-robot">GitHub</a>
+  </div>
+  <button class="theme" id="theme" aria-label="Đổi giao diện sáng/tối">🌓</button>
+</div></nav>
+
+<header class="wrap hero">
+  <div>
+    <span class="tag">Ngày hội Chuyển đổi số phường Liên Chiểu · 18/10/2026</span>
+    <h1>Xin chào,<br>mình là <span>Nhi</span></h1>
+    <p class="lead">Robot trợ lý AI nói tiếng Việt do sinh viên Bộ môn Điện – Cơ khí, FPT Polytechnic Đà Nẵng chế tạo.
+      Nhi nghe, hiểu, tự tra Google và trả lời bằng giọng nói tự nhiên, với đôi mắt biết biểu cảm.</p>
+    <div class="cta">
+      <a class="btn primary" href="#cai-dat">🚀 Bắt đầu cài đặt</a>
+      <a class="btn ghost" href="https://github.com/huyhoa308/ai-robot">⭐ Mã nguồn</a>
+    </div>
+  </div>
+  <div class="robot">
+    <div class="head" id="head" title="Bấm vào Nhi để đổi cảm xúc">
+      <div class="eyes" id="eyes"><div class="eye"></div><div class="eye"></div></div>
+      <div class="blush l"></div><div class="blush r"></div>
+      <div class="bubble" id="bubble"><span id="say"></span><span class="caret"></span></div>
+    </div>
+    <div class="moods" id="moods">
+      <button data-m="" class="on">😐 Bình thường</button><button data-m="happy">😊 Vui</button>
+      <button data-m="love">😍 Thích</button><button data-m="surprised">😮 Ngạc nhiên</button>
+      <button data-m="sad">😢 Buồn</button><button data-m="angry">😠 Giận</button>
+    </div>
+  </div>
+</header>
+
+<section id="tinh-nang" class="wrap reveal">
+  <h2>Nhi làm được gì?</h2>
+  <p class="sub">Phần cứng nhỏ gọn chạy firmware Xiaozhi, kết nối tới Gemini Live để hội thoại thời gian thực.</p>
+  <div class="grid">
+    <div class="card"><div class="ic">🗣️</div><h3>Nói tiếng Việt tự nhiên</h3><p>Gemini Live nghe và trả lời trực tiếp bằng giọng nói, ngắt lời được, phản hồi chưa tới 1 giây.</p></div>
+    <div class="card"><div class="ic">👋</div><h3>Gọi không cần nút</h3><p>Nói "Chào Nhi" (wake word chạy trên chip) hoặc đưa tay lại gần cảm biến laser VL53L0X.</p></div>
+    <div class="card"><div class="ic">👀</div><h3>24 biểu cảm mắt</h3><p>Mắt RoboEyes trên màn ILI9341: vui, buồn, thả tim, ngủ gật, kính râm… kèm phụ đề câu trả lời.</p></div>
+    <div class="card"><div class="ic">🔎</div><h3>Tự tra Google</h3><p>Tin tức, thời tiết, câu hỏi khó: Nhi tự tìm kiếm rồi tóm tắt ngắn gọn.</p></div>
+    <div class="card"><div class="ic">🎓</div><h3>Nhân vật riêng</h3><p>Tính cách và kiến thức về trường, bộ môn, sự kiện sửa trong 2 file văn bản, không cần lập trình.</p></div>
+    <div class="card"><div class="ic">💸</div><h3>Miễn phí</h3><p>Server chạy ngay trên laptop, dùng gói miễn phí của Google AI Studio.</p></div>
+  </div>
+</section>
+
+<section id="kien-truc" class="wrap reveal">
+  <h2>Kiến trúc</h2>
+  <p class="sub">Robot gửi giọng nói (Opus 16 kHz) qua WebSocket tới laptop; laptop chuyển tiếp tới Gemini Live và đẩy giọng trả lời về robot.</p>
+  <div class="flow">
+    <div class="node"><b>🤖 Robot Nhi</b><small>ESP32-S3 · mic INMP441 · loa PCM5100A · ToF · màn hình</small></div>
+    <div class="arrow"></div>
+    <div class="node"><b>💻 Laptop · Nhi Live</b><small>bridge.py · OTA :8003 · WebSocket :8000</small></div>
+    <div class="arrow"></div>
+    <div class="node"><b>✨ Gemini Live</b><small>gemini-2.5-flash-native-audio · Google Search</small></div>
+  </div>
+</section>
+
+<section id="phan-cung" class="wrap reveal">
+  <h2>Phần cứng & sơ đồ chân</h2>
+  <p class="sub">Toàn bộ linh kiện dùng chung một bus I2S full-duplex và một bus I2C.</p>
+  <div class="hw">
+    <table>
+      <tr><th>Linh kiện</th><th>Chân ESP32-S3</th></tr>
+      <tr><td>Màn hình ILI9341 2.4"</td><td><span class="pin">SCK 40 · MOSI 41 · CS 39 · DC 38 · RST 47</span></td></tr>
+      <tr><td>Mic INMP441</td><td><span class="pin">SD 14 · SCK 16 · WS 17 · L/R→GND</span></td></tr>
+      <tr><td>Loa WeAct I2S V1 (PCM5100A)</td><td><span class="pin">DIN 15 · BCK 16 · WS 17 · VCC 5V</span></td></tr>
+      <tr><td>Cảm biến ToF VL53L0X</td><td><span class="pin">SDA 8 · SCL 9 · XSHUT 21</span></td></tr>
+      <tr><td>Servo chân (đang tắt)</td><td><span class="pin">FL 7 · FR 4 · RL 6 · RR 5</span></td></tr>
+      <tr><td>Nút BOOT · LED RGB</td><td><span class="pin">0 · 48</span></td></tr>
+    </table>
+    <div class="wiring"><img src="assets/wiring_pinout.svg" alt="Sơ đồ đấu dây robot Nhi"></div>
+  </div>
+</section>
+
+<section id="cai-dat" class="wrap reveal">
+  <h2>Cài đặt nhanh</h2>
+  <p class="sub">Chi tiết từng bước có trong README của repo.</p>
+  <div class="tabs" id="tabs">
+    <button class="on" data-p="p1">1 · Server trên laptop</button>
+    <button data-p="p2">2 · Nạp firmware</button>
+    <button data-p="p3">3 · Kết nối robot</button>
+  </div>
+  <div class="panel on" id="p1"><ol class="steps">
+    <li>Lấy Gemini API key miễn phí tại <a href="https://aistudio.google.com/apikey">aistudio.google.com/apikey</a>.</li>
+    <li>Vào <code>server/nhi-live</code>, chuột phải <code>setup.ps1</code> → <b>Run with PowerShell</b> (nên chạy quyền Admin). Script tự cài Python, thư viện, hỏi key, mở tường lửa và tạo shortcut.</li>
+    <li>Bấm đúp shortcut <b>Nhi Live</b> trên Desktop. Để nguyên cửa sổ đó trong suốt buổi demo.</li>
+  </ol></div>
+  <div class="panel" id="p2"><ol class="steps">
+    <li>Cài ESP-IDF v6.0.1.</li>
+    <li>Tải Xiaozhi và áp các patch của Nhi:
+      <pre>git clone https://github.com/78/xiaozhi-esp32.git
+cd xiaozhi-esp32 &amp;&amp; git checkout c0fe42a
+git am ..\ai-robot\firmware\patches\*.patch</pre></li>
+    <li>Build và nạp: <pre>python scripts/build.py esp32s3-weact-dog --language vi-VN
+idf.py -p COM8 flash monitor</pre></li>
+  </ol></div>
+  <div class="panel" id="p3"><ol class="steps">
+    <li>Robot khởi động lần đầu sẽ phát Wi-Fi <code>Xiaozhi-XXXX</code> (hoặc nhấn BOOT lúc đang quét Wi-Fi).</li>
+    <li>Điện thoại vào Wi-Fi đó, mở <code>192.168.4.1</code>, chọn Wi-Fi mà laptop đang dùng.</li>
+    <li>Ô <b>OTA URL</b>: <code>http://&lt;IP-laptop&gt;:8003/xiaozhi/ota/</code> → Lưu. Nói "Chào Nhi"!</li>
+  </ol></div>
+</section>
+
+<footer>
+  Nhóm thực hiện: Nguyễn Trung · GVHD: thầy Trương Huy Hòa · Bộ môn Điện – Cơ khí, FPT Polytechnic Đà Nẵng<br>
+  Dựa trên <a href="https://github.com/78/xiaozhi-esp32">xiaozhi-esp32</a> (MIT) và FluxGarage RoboEyes (GPL-3.0).
+</footer>
+
+<script>
+(() => {
+  const root = document.documentElement, head = document.getElementById('head'),
+        eyes = document.getElementById('eyes'), say = document.getElementById('say');
+  // theme toggle (remembered per viewer, optional)
+  try { const t = localStorage.getItem('nhi-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+  document.getElementById('theme').onclick = () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark'
+               : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('nhi-theme', root.dataset.theme); } catch (e) {}
+  };
+  // eyes follow the pointer
+  addEventListener('pointermove', e => {
+    const r = head.getBoundingClientRect();
+    const dx = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / 400));
+    const dy = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / 400));
+    eyes.style.transform = `translate(${dx * 9}%, ${dy * 9}%)`;
+  });
+  // blink
+  (function blink() {
+    head.classList.add('blink');
+    setTimeout(() => head.classList.remove('blink'), 140);
+    setTimeout(blink, 2200 + Math.random() * 2800);
+  })();
+  // moods
+  const moods = ['', 'happy', 'love', 'surprised', 'sad', 'angry'];
+  const lines = {
+    '': 'Xin chào! Mình là Nhi, bạn muốn hỏi gì nào?',
+    happy: 'Hôm nay là Ngày hội Chuyển đổi số, vui quá!',
+    love: 'Nhi được các bạn Điện – Cơ khí làm ra đó!',
+    surprised: 'Ồ! Bạn đưa tay lại gần là Nhi nghe liền.',
+    sad: 'Ở đây ồn quá, bạn nói gần Nhi hơn chút nhé…',
+    angry: 'Đừng chia sẻ mã OTP cho ai nha, lừa đảo đó!'
+  };
+  const btns = [...document.querySelectorAll('#moods button')];
+  let typing;
+  function setMood(m) {
+    moods.forEach(x => x && head.classList.remove(x));
+    if (m) head.classList.add(m);
+    btns.forEach(b => b.classList.toggle('on', b.dataset.m === m));
+    clearInterval(typing); say.textContent = '';
+    const text = lines[m]; let i = 0;
+    typing = setInterval(() => { say.textContent = text.slice(0, ++i); if (i >= text.length) clearInterval(typing); }, 38);
+  }
+  btns.forEach(b => b.onclick = () => setMood(b.dataset.m));
+  head.onclick = () => {
+    const cur = btns.find(b => b.classList.contains('on')).dataset.m;
+    setMood(moods[(moods.indexOf(cur) + 1) % moods.length]);
+  };
+  setMood('');
+  // tabs
+  document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === b.dataset.p));
+  });
+  // reveal on scroll
+  const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && e.target.classList.add('in')), {threshold: .12});
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+})();
+</script>
+</body>
+</html>

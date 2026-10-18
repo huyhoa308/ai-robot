@@ -1,0 +1,80 @@
+From 8e0761f18d491944cf3de7e8d96fefe9044dd52a Mon Sep 17 00:00:00 2001
+From: Truong Huy Hoa <huyhoa308@gmail.com>
+Date: Sun, 18 Oct 2026 10:04:46 +0700
+Subject: [PATCH] feat(dog): max volume for the exhibition, more sensitive ToF,
+ wink when already listening
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ main/boards/esp32s3-weact-dog/config.h           |  2 +-
+ main/boards/esp32s3-weact-dog/dog_config.h       |  4 ++--
+ main/boards/esp32s3-weact-dog/weact_dog_board.cc | 12 +++++++++++-
+ 3 files changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/main/boards/esp32s3-weact-dog/config.h b/main/boards/esp32s3-weact-dog/config.h
+index b0f1c15..2bff747 100644
+--- a/main/boards/esp32s3-weact-dog/config.h
++++ b/main/boards/esp32s3-weact-dog/config.h
+@@ -9,7 +9,7 @@
+ #define AUDIO_INPUT_SAMPLE_RATE  16000
+ #define AUDIO_OUTPUT_SAMPLE_RATE 16000
+ // Default volume (0..100, changeable by voice; the NVS value wins once set).
+-#define AUDIO_DEFAULT_OUTPUT_VOLUME 70
++#define AUDIO_DEFAULT_OUTPUT_VOLUME 100
+ 
+ #define BOOT_BUTTON_GPIO PIN_BUTTON_TALK
+ #define BUILTIN_LED_GPIO PIN_STATUS_LED
+diff --git a/main/boards/esp32s3-weact-dog/dog_config.h b/main/boards/esp32s3-weact-dog/dog_config.h
+index a3829d9..b53d5b9 100644
+--- a/main/boards/esp32s3-weact-dog/dog_config.h
++++ b/main/boards/esp32s3-weact-dog/dog_config.h
+@@ -132,9 +132,9 @@ static constexpr LegConfig kLegConfig[LEG_COUNT] = {
+ #define TOF_NEAR_MM              50     // closer than this = "hand in front" (5 cm)
+ #define TOF_NEAR_SAMPLES         2      // consecutive near samples before triggering
+ #define TOF_NEAR_MAX_MM          70     // adaptive threshold upper clamp
+-#define TOF_DROP_MM              12     // trigger when this much closer than the baseline
++#define TOF_DROP_MM              8      // trigger when this much closer than the baseline (noise is ~±3 mm)
+                                         // (empty scene reads ~78-83 mm on this robot)
+-#define TOF_REARM_MARGIN_MM      8      // must go this far above the threshold to re-arm
++#define TOF_REARM_MARGIN_MM      4      // must go this far above the threshold to re-arm
+ #define TOF_REARM_SAMPLES        3
+ #define TOF_STALL_MS             1000   // no sample this long -> reset the sensor
+ #define TOF_COOLDOWN_MS          1500   // minimum time between two triggers
+diff --git a/main/boards/esp32s3-weact-dog/weact_dog_board.cc b/main/boards/esp32s3-weact-dog/weact_dog_board.cc
+index 4358476..8603a50 100644
+--- a/main/boards/esp32s3-weact-dog/weact_dog_board.cc
++++ b/main/boards/esp32s3-weact-dog/weact_dog_board.cc
+@@ -34,6 +34,12 @@
+ // speaker side sends the mono stream to both slots (PCM5100A L+R outputs).
+ class DogAudioCodec : public NoAudioCodec {
+ public:
++    // Exhibition hall is loud: never start below the default (a lower NVS value is raised).
++    void Start() override {
++        NoAudioCodec::Start();
++        if (output_volume_ < AUDIO_DEFAULT_OUTPUT_VOLUME) SetOutputVolume(AUDIO_DEFAULT_OUTPUT_VOLUME);
++    }
++
+     DogAudioCodec() {
+         duplex_ = true;
+         input_sample_rate_ = AUDIO_INPUT_SAMPLE_RATE;
+@@ -149,12 +155,16 @@ private:
+     // Hand closer than 5 cm in front of the ToF = same as a BOOT click:
+     // Idle -> open the channel and listen; Speaking -> interrupt and listen.
+     void InitializeTof() {
+-        tof_.Start([](int distance_mm) {
++        tof_.Start([this](int distance_mm) {
+             auto& app = Application::GetInstance();
+             DeviceState state = app.GetDeviceState();
+             if (state == kDeviceStateIdle || state == kDeviceStateSpeaking) {
+                 ESP_LOGI(TAG, "ToF %d mm -> listen", distance_mm);
+                 app.ToggleChatState();
++            } else {
++                // Already listening (or busy): wink so the visitor sees the hand was noticed.
++                ESP_LOGI(TAG, "ToF %d mm in state %d -> wink", distance_mm, (int)state);
++                if (display_) display_->Wink();
+             }
+         });
+     }
+-- 
+2.44.0.windows.1
+

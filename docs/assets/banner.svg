@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="1200" height="420" role="img" aria-label="Nhi - robot trợ lý AI nói tiếng Việt, FPT Polytechnic Đà Nẵng">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1026"/>
+      <stop offset="0.55" stop-color="#151a3d"/>
+      <stop offset="1" stop-color="#2a1145"/>
+    </linearGradient>
+    <linearGradient id="eye" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7cf6ff"/>
+      <stop offset="1" stop-color="#2fa8ff"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#9fd8ff"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="screen"><rect x="70" y="85" width="400" height="250" rx="28"/></clipPath>
+  </defs>
+
+  <rect width="1200" height="420" rx="28" fill="url(#bg)"/>
+  <!-- soft floating orbs -->
+  <circle cx="1080" cy="70" r="120" fill="#7b5cff" opacity="0.18">
+    <animate attributeName="cy" values="70;100;70" dur="7s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="620" cy="400" r="160" fill="#00c2ff" opacity="0.10">
+    <animate attributeName="cx" values="620;680;620" dur="9s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- robot face -->
+  <rect x="60" y="75" width="420" height="270" rx="36" fill="#05070f" stroke="#2b3566" stroke-width="3"/>
+  <g clip-path="url(#screen)" filter="url(#glow)">
+    <g>
+      <animateTransform attributeName="transform" type="translate"
+        values="0 0; 0 0; 26 -6; 26 -6; -26 4; -26 4; 0 0" keyTimes="0;0.25;0.32;0.5;0.58;0.8;1"
+        dur="8s" repeatCount="indefinite"/>
+      <rect x="140" y="140" width="110" height="130" rx="30" fill="url(#eye)">
+        <animate attributeName="height" values="130;130;6;130;130" keyTimes="0;0.44;0.47;0.5;1" dur="4.2s" repeatCount="indefinite"/>
+        <animate attributeName="y" values="140;140;202;140;140" keyTimes="0;0.44;0.47;0.5;1" dur="4.2s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="290" y="140" width="110" height="130" rx="30" fill="url(#eye)">
+        <animate attributeName="height" values="130;130;6;130;130" keyTimes="0;0.44;0.47;0.5;1" dur="4.2s" repeatCount="indefinite"/>
+        <animate attributeName="y" values="140;140;202;140;140" keyTimes="0;0.44;0.47;0.5;1" dur="4.2s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+    <!-- blush -->
+    <ellipse cx="150" cy="300" rx="34" ry="12" fill="#ff6fa8" opacity="0.45"/>
+    <ellipse cx="390" cy="300" rx="34" ry="12" fill="#ff6fa8" opacity="0.45"/>
+  </g>
+  <!-- sound waves -->
+  <g stroke="#7cf6ff" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M505 180 q16 30 0 60"><animate attributeName="opacity" values="0;1;0" dur="1.6s" repeatCount="indefinite"/></path>
+    <path d="M525 160 q28 50 0 100"><animate attributeName="opacity" values="0;1;0" dur="1.6s" begin="0.25s" repeatCount="indefinite"/></path>
+    <path d="M545 140 q40 70 0 140"><animate attributeName="opacity" values="0;1;0" dur="1.6s" begin="0.5s" repeatCount="indefinite"/></path>
+  </g>
+
+  <!-- text -->
+  <text x="640" y="150" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="30" fill="#7cf6ff" letter-spacing="6">XIN CHÀO, MÌNH LÀ</text>
+  <text x="636" y="245" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="110" font-weight="800" fill="url(#title)">Nhi</text>
+  <text x="640" y="295" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="26" fill="#d7defa">Robot trợ lý AI nói tiếng Việt · ESP32-S3 + Gemini Live</text>
+  <text x="640" y="335" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="20" fill="#8f9bd0">Bộ môn Điện – Cơ khí · FPT Polytechnic Đà Nẵng</text>
+</svg>
