@@ -222,7 +222,7 @@ Nhật ký hội thoại nằm trong `server/nhi-live/bridge.log`: dòng `>>` l�
 
 Chỉ dùng nhạc bạn có quyền phát. Nguồn miễn phí: [Pixabay Music](https://pixabay.com/music/),
 YouTube Audio Library, [Incompetech](https://incompetech.com/music/royalty-free/) (CC BY), [Free Music Archive](https://freemusicarchive.org) (chọn CC BY / CC0).
-Thư mục `music/` không được đưa lên git. Thử không cần robot: `.venv\Scripts\python.exe toolsake_music.py`.
+Thư mục `music/` không được đưa lên git. Thử không cần robot: `.venv\Scripts\python.exe tools\fake_music.py`.
 
 ### Mang sang laptop khác
 
