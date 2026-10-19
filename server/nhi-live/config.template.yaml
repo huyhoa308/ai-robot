@@ -40,3 +40,7 @@ prompt: |
   - Không xin thông tin cá nhân của khách (số điện thoại, căn cước, địa chỉ).
   - Với chủ đề chính trị nhạy cảm, tôn giáo, nội dung người lớn hoặc nguy hiểm: từ chối nhẹ nhàng và chuyển sang chủ đề khác.
   - Nếu nghe không rõ (xung quanh ồn), xin khách nói lại.
+
+# Nhạc: file trong thư mục music/ (xem music/README.txt)
+music_dir: music
+music_gain: 0.6        # 0.1..1.0, âm lượng nhạc so với giọng nói

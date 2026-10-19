@@ -9,3 +9,6 @@ _test/
 probe_*.wav
 __pycache__/
 dist/
+# nhạc của người dùng: không đưa lên git (bản quyền)
+music/*
+!music/README.txt

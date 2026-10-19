@@ -37,6 +37,7 @@ Gọi Nhi bằng câu **"Chào Nhi"**, bằng cách **đưa tay lại gần cả
 | 👋 **Gọi không cần nút** | Wake word "Chào Nhi" chạy ngay trên chip (MultiNet) và cảm biến laser VL53L0X |
 | 👀 **24 biểu cảm mắt** | RoboEyes trên màn ILI9341: vui, buồn, thả tim, Zzz, kính râm… kèm phụ đề |
 | 📶 **Wi-Fi ổn định** | Tắt power save, buffer Wi-Fi trong PSRAM |
+| 🎵 **Phát nhạc theo lệnh** | "Nhi ơi mở nhạc", "mở bài …": phát file trong thư mục `music/`; đưa tay vào cảm biến để dừng |
 | 💸 **Miễn phí** | Server chạy trên laptop, dùng gói miễn phí Google AI Studio |
 | 🧪 **Tự kiểm tra phần cứng** | Bộ test PlatformIO tự đọc log và báo linh kiện nào lỗi |
 
@@ -211,6 +212,17 @@ Mọi thứ nằm trong `server/nhi-live/`. Sửa xong thì **chạy lại short
 | Tắt tra Google | `config.yaml` → `google_search: false` |
 
 Nhật ký hội thoại nằm trong `server/nhi-live/bridge.log`: dòng `>>` là chữ Nhi nghe được, `<<` là câu Nhi trả lời.
+
+### 🎵 Phát nhạc
+
+1. Chép file `.mp3` / `.wav` / `.flac` / `.ogg` vào `server/nhi-live/music/`. **Tên file = tên bài** (có dấu cũng được).
+2. Chạy lại shortcut **Nhi Live**.
+3. Khách nói: *"Nhi ơi mở nhạc"* (Nhi tự chọn bài), *"mở bài Đà Nẵng mến yêu"*, *"Nhi có những bài gì?"*.
+4. Dừng: đưa tay lại gần cảm biến, nói "Chào Nhi" hoặc bấm BOOT. Âm lượng nhạc: `music_gain` trong `config.yaml`.
+
+Chỉ dùng nhạc bạn có quyền phát. Nguồn miễn phí: [Pixabay Music](https://pixabay.com/music/),
+YouTube Audio Library, [Incompetech](https://incompetech.com/music/royalty-free/) (CC BY), [Free Music Archive](https://freemusicarchive.org) (chọn CC BY / CC0).
+Thư mục `music/` không được đưa lên git. Thử không cần robot: `.venv\Scripts\python.exe toolsake_music.py`.
 
 ### Mang sang laptop khác
 

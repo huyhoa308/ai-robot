@@ -17,7 +17,9 @@ import logging
 import os
 import re
 import sys
+import random
 import time
+import unicodedata
 import uuid
 
 BIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bin")
@@ -25,6 +27,8 @@ os.environ["PATH"] = BIN + os.pathsep + os.environ.get("PATH", "")
 if hasattr(os, "add_dll_directory"):
     os.add_dll_directory(BIN)
 
+import numpy as np  # noqa: E402
+import miniaudio  # noqa: E402  (mp3/wav/flac/ogg decoder, no ffmpeg needed)
 import opuslib_next  # noqa: E402  (needs opus.dll on PATH)
 import yaml  # noqa: E402
 from aiohttp import WSMsgType, web  # noqa: E402
@@ -51,6 +55,77 @@ log = logging.getLogger("nhi-live")
 
 SENTENCE_END = re.compile(r"[.!?…。！？]\s*$")
 
+# ---- music library ---------------------------------------------------------
+MUSIC_DIR = os.path.join(HERE, CFG.get("music_dir", "music"))
+MUSIC_EXT = (".mp3", ".wav", ".flac", ".ogg")
+
+
+def _fold(text):
+    """lowercase, no Vietnamese diacritics, only letters/digits/spaces"""
+    text = unicodedata.normalize("NFD", text.lower().replace("đ", "d"))
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def music_tracks():
+    """{title: path} for every audio file in music/ (title = file name without extension)"""
+    if not os.path.isdir(MUSIC_DIR):
+        return {}
+    tracks = {}
+    for root, _, files in os.walk(MUSIC_DIR):
+        for f in sorted(files):
+            if f.lower().endswith(MUSIC_EXT):
+                tracks[os.path.splitext(f)[0]] = os.path.join(root, f)
+    return tracks
+
+
+def find_track(query):
+    tracks = music_tracks()
+    if not tracks:
+        return None, None
+    q = _fold(query or "")
+    if not q or q in ("bat ky", "ngau nhien", "random", "nhac", "mot bai", "bai nao cung duoc"):
+        title = random.choice(list(tracks))
+        return title, tracks[title]
+    words = set(q.split())
+    best, score = None, 0.0
+    for title in tracks:
+        t = _fold(title)
+        s = 1.0 if q in t else len(words & set(t.split())) / len(words)
+        if s > score:
+            best, score = title, s
+    if score >= 0.5:
+        return best, tracks[best]
+    return None, None
+
+
+def decode_track(path):
+    """-> 16-bit mono PCM at OUT_RATE"""
+    gain = float(CFG.get("music_gain", 0.6))
+    with open(path, "rb") as f:  # read in Python: miniaudio cannot open Vietnamese file names on Windows
+        data = f.read()
+    snd = miniaudio.decode(data, output_format=miniaudio.SampleFormat.SIGNED16,
+                                nchannels=1, sample_rate=OUT_RATE)
+    pcm = np.frombuffer(snd.samples, dtype=np.int16).astype(np.float32) * gain
+    return np.clip(pcm, -32768, 32767).astype(np.int16).tobytes()
+
+
+MUSIC_TOOLS = types.Tool(function_declarations=[
+    types.FunctionDeclaration(
+        name="play_music",
+        description="Phát một bài nhạc trong thư viện nhạc của Nhi qua loa robot. "
+                    "Gọi khi khách muốn nghe nhạc, nghe hát, mở bài hát.",
+        parameters=types.Schema(type="OBJECT", properties={
+            "song": types.Schema(type="STRING",
+                                 description="Tên bài hoặc ca sĩ khách muốn nghe; để trống nếu khách không chọn bài."),
+        }),
+    ),
+    types.FunctionDeclaration(
+        name="list_music",
+        description="Liệt kê các bài nhạc có trong thư viện của Nhi.",
+    ),
+])
+
 
 def live_config():
     speech = types.SpeechConfig(language_code=CFG.get("language", "vi-VN"))
@@ -61,6 +136,15 @@ def live_config():
                 prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=CFG["voice"])),
         )
     tools = [types.Tool(google_search=types.GoogleSearch())] if CFG.get("google_search", True) else []
+    music_rule = ""
+    if music_tracks():
+        tools.append(MUSIC_TOOLS)
+        music_rule = (
+            "\n\nNhi có thư viện nhạc riêng. Khi khách muốn nghe nhạc, gọi công cụ play_music "
+            "NGAY, không hỏi lại; nếu khách không nói tên bài thì gọi với song để trống (Nhi tự chọn bài). "
+            "Không tự hát, không tìm nhạc trên mạng. Nếu không tìm thấy bài, gọi list_music và gợi ý bài có sẵn. "
+            "Trước khi nhạc phát chỉ nói một câu thật ngắn giới thiệu tên bài, kèm lời dặn: muốn dừng nhạc "
+            "thì đưa tay lại gần cảm biến hoặc nói \"Chào Nhi\".")
     now = time.localtime()
     weekday = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"][now.tm_wday]
     knowledge = ""
@@ -75,7 +159,7 @@ def live_config():
         "(tổng thống, chủ tịch, thủ tướng...), tin tức, sự kiện gần đây, giá cả, kết quả thi đấu, "
         "thời tiết hay bất kỳ thông tin nào có thể đã thay đổi, BẮT BUỘC dùng Google Search "
         "trước khi trả lời, rồi trả lời theo kết quả tìm được."
-    )
+    ) + music_rule
     return types.LiveConnectConfig(
         response_modalities=["AUDIO"],
         system_instruction=system,
@@ -114,6 +198,8 @@ class DeviceSession:
         self.bot_text = []
         self.last_activity = time.time()
         self.send_lock = asyncio.Lock()
+        self.pending_track = None     # (title, path) chosen by play_music, starts after Nhi's intro
+        self.music_task = None
 
     # ---- to device -------------------------------------------------------
     async def send_json(self, obj):
@@ -203,8 +289,81 @@ class DeviceSession:
                     await self.stop_speaking()
                     self.drop_output = False
                     self.last_activity = time.time()
+                if msg.tool_call:
+                    await self.on_tool_call(msg.tool_call)
+                if sc and sc.turn_complete and self.pending_track and not self.music_task:
+                    title, path = self.pending_track
+                    self.pending_track = None
+                    self.music_task = asyncio.create_task(self.play_music(title, path))
                 if msg.go_away:
                     log.warning("[%s] Gemini go_away: %s", self.device_id, msg.go_away)
+
+    # ---- music -----------------------------------------------------------
+    async def on_tool_call(self, tool_call):
+        responses = []
+        for fc in tool_call.function_calls or []:
+            args = fc.args or {}
+            if fc.name == "play_music":
+                title, path = find_track(args.get("song", ""))
+                if path:
+                    log.info("[%s] play_music(%r) -> %s", self.device_id, args.get("song", ""), title)
+                    self.pending_track = (title, path)
+                    result = {"status": "ok", "now_playing": title,
+                              "note": "Nhạc sẽ phát ngay sau khi bạn nói xong câu giới thiệu ngắn."}
+                else:
+                    log.info("[%s] play_music(%r) -> not found", self.device_id, args.get("song", ""))
+                    result = {"status": "not_found", "available": list(music_tracks())[:30]}
+            elif fc.name == "list_music":
+                result = {"songs": list(music_tracks())[:50]}
+            else:
+                result = {"error": "unknown tool"}
+            responses.append(types.FunctionResponse(id=fc.id, name=fc.name, response=result))
+        if responses:
+            await self.live.send_tool_response(function_responses=responses)
+
+    async def play_music(self, title, path):
+        """Stream a decoded track to the robot like one long TTS reply."""
+        try:
+            pcm = await asyncio.to_thread(decode_track, path)
+        except Exception as e:
+            log.error("[%s] cannot decode %s: %s", self.device_id, path, e)
+            self.music_task = None
+            return
+        try:
+            while self.speaking:  # let Nhi finish her intro sentence
+                await asyncio.sleep(0.1)
+            self.speaking = True
+            self.drop_output = False
+            self.frames_sent = 0
+            self.speak_t0 = time.monotonic()
+            log.info("[%s] music start: %s (%.0f s)", self.device_id, title, len(pcm) / 2 / OUT_RATE)
+            await self.send_json({"type": "llm", "text": "🎵", "emotion": "silly"})
+            await self.send_json({"type": "tts", "state": "start"})
+            await self.send_json({"type": "tts", "state": "sentence_start", "text": f"🎵 {title}"})
+            frame_bytes = OUT_FRAME * 2
+            for i in range(0, len(pcm) - frame_bytes + 1, frame_bytes):
+                if self.ws.closed or self.drop_output:
+                    break
+                await self._send_frame(pcm[i:i + frame_bytes])
+                self.last_activity = time.time()
+            remaining = self.speak_t0 + self.frames_sent * FRAME_MS / 1000.0 - time.monotonic()
+            if remaining > 0 and not self.drop_output:
+                await asyncio.sleep(remaining)
+            log.info("[%s] music end: %s", self.device_id, title)
+            if not self.drop_output:
+                await self.send_json({"type": "tts", "state": "stop"})
+        except asyncio.CancelledError:
+            log.info("[%s] music stopped: %s", self.device_id, title)
+        finally:
+            self.speaking = False
+            self.drop_output = False
+            self.last_activity = time.time()
+            self.music_task = None
+
+    def stop_music(self):
+        self.pending_track = None
+        if self.music_task and not self.music_task.done():
+            self.music_task.cancel()
 
     # ---- from device -----------------------------------------------------
     async def on_audio(self, packet: bytes):
@@ -238,6 +397,7 @@ class DeviceSession:
                 await self.live.send_realtime_input(audio_stream_end=True)
         elif t == "abort":
             log.info("[%s] abort (%s)", self.device_id, msg.get("reason", ""))
+            self.stop_music()
             if self.speaking:
                 self.drop_output = True
                 await self.send_json({"type": "tts", "state": "stop"})
@@ -284,6 +444,7 @@ async def ws_handler(request):
             finally:
                 pump.cancel()
                 watchdog.cancel()
+                sess.stop_music()
     except Exception as e:
         log.error("[%s] session error: %s: %s", device_id, type(e).__name__, str(e)[:300])
         if not ws.closed:
