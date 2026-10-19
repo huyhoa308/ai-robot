@@ -17,4 +17,4 @@ pio run -e test_mic -t upload -t monitor
 ```
 
 > Firmware Arduino ghi đè vùng NVS nên robot **mất Wi-Fi và OTA URL** của chatbot. Nạp lại chatbot rồi cài lại (README chính, bước C).
-> `Restore-Xiaozhi` trong `test_all.ps1` đang trỏ tới `E:\Claude\xiaozhi-dog\xiaozhi-esp32`; sửa đường dẫn cho máy của bạn.
+> `Restore-Xiaozhi` trong `test_all.ps1` dùng thư mục `xiaozhi-esp32` nằm cạnh thư mục repo này (README chính, bước B).

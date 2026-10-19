@@ -9,7 +9,6 @@ Subject: [PATCH 5/5] feat(dog): servo master switch (off), mic reads both I2S
   logs the level every 3 s, flagging "NO SIGNAL" when both slots are silent
   (found the VDD/GND and SCK/WS wiring mistakes this way)
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  main/boards/esp32s3-weact-dog/dog_config.h    |  3 +
  .../esp32s3-weact-dog/weact_dog_board.cc      | 72 ++++++++++++++++++-

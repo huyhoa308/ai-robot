@@ -4,7 +4,6 @@ Date: Sun, 18 Oct 2026 10:04:46 +0700
 Subject: [PATCH] feat(dog): max volume for the exhibition, more sensitive ToF,
  wink when already listening
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  main/boards/esp32s3-weact-dog/config.h           |  2 +-
  main/boards/esp32s3-weact-dog/dog_config.h       |  4 ++--

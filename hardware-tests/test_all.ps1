@@ -26,7 +26,7 @@ function Restore-Xiaozhi($p) {
     Write-Host "`n==> Nap lai firmware chatbot Xiaozhi..." -ForegroundColor Cyan
     $env:IDF_TOOLS_PATH = "C:\Espressif\tools6"
     . "C:\esp\v6.0.1\esp-idf\export.ps1" | Out-Null
-    Push-Location "E:\Claude\xiaozhi-dog\xiaozhi-esp32"
+    Push-Location (Join-Path $PSScriptRoot "..\..\xiaozhi-esp32")  # clone next to this repo
     idf.py -p $p flash
     Pop-Location
     Write-Host "`n==> Log khoi dong chatbot (30 s):" -ForegroundColor Cyan

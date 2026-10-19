@@ -1,5 +1,5 @@
 param(
-    [string]$XiaozhiDir = "E:\Claude\xiaozhi-dog\xiaozhi-esp32",
+    [string]$XiaozhiDir = (Join-Path $PSScriptRoot "..\..\xiaozhi-esp32"),  # clone next to this repo
     [string]$IdfPath = "C:\esp\v6.0.1\esp-idf",
     [string]$IdfToolsPath = "C:\Espressif\tools6",
     [string]$Port = "COM8",

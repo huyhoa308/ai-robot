@@ -15,7 +15,6 @@ Subject: [PATCH 3/5] feat(dog): real pins, no servos, richer eyes, ToF listen,
   adaptive threshold, stall watchdog.
 - Custom MultiNet wake word "chao ni" (Chao Nhi).
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  main/boards/esp32s3-weact-dog/README.md       |  99 ++--
  main/boards/esp32s3-weact-dog/board_pins.h    |  47 +-

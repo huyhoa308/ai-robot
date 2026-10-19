@@ -9,8 +9,6 @@ Subject: [PATCH 1/5] feat(board): add esp32s3-weact-dog (RoboEyes on ILI9341,
 - DogBehavior: state/emotion tables driving eyes and legs
 - DogAudioCodec: simplex I2S with amp SD pin and conservative default volume
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_011zeGQ7CYtkKwrDgf89CB3X
 ---
  main/CMakeLists.txt                           |   5 +
  main/Kconfig.projbuild                        |  10 +

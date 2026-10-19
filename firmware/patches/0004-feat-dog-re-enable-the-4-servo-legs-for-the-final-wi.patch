@@ -10,7 +10,6 @@ and states drive leg motions again (wiggle, wave, crouch, sit, quick stand,
 soft wiggle while speaking, sit after 60 s idle). Comments updated for the
 WeAct I2S Speaker V1 module.
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  main/boards/esp32s3-weact-dog/README.md       |  11 +-
  main/boards/esp32s3-weact-dog/board_pins.h    |  10 +-
